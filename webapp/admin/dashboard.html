@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="../index.html" class="navbar-brand"><i class="fas fa-leaf"></i> Agro-Connect</a>
+            <ul class="navbar-menu">
+                <li><a href="#" class="navbar-link active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#" onclick="logoutAdmin()" class="navbar-link"><i class="fas fa-sign-out-alt"></i>
+                        Logout</a></li>
+                <li><a href="#" id="theme-toggle" onclick="toggleTheme()" class="navbar-link"><i class="fas fa-moon"
+                            id="theme-icon"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="container">
+            <div class="dashboard-header fade-in">
+                <h1 class="dashboard-title">System Overview <i class="fas fa-server"></i></h1>
+                <p class="dashboard-subtitle">Monitoring and Management Console</p>
+            </div>
+
+            <div id="stats-container" class="dashboard-grid">
+                <!-- Stats loaded dynamically -->
+            </div>
+
+            <div class="card fade-in" style="margin-top: 2rem;">
+                <div class="card-header">System Health & Logs <i class="fas fa-heartbeat"></i></div>
+                <div class="card-body">
+                    <p style="color: green;"><i class="fas fa-check-circle"></i> Database Connection: Active</p>
+                    <p style="color: green;"><i class="fas fa-check-circle"></i> Server Status: Running (Port 8080)</p>
+                    <hr>
+                    <p class="text-muted">Data populated from database. User management features coming soon in v1.2</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        const admin = JSON.parse(localStorage.getItem('admin_user'));
+        if (!admin) {
+            window.location.href = 'login.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        function logoutAdmin() {
+            localStorage.removeItem('admin_user');
+            window.location.href = 'login.html';
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                const data = await res.json();
+
+                if (data.success) {
+                    renderStats(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function renderStats(stats) {
+            document.getElementById('stats-container').innerHTML = `
+                <div class="stat-card fade-in">
+                    <div class="stat-icon green"><i class="fas fa-tractor"></i></div>
+                    <div class="stat-content"><h3>${stats.total_farmers}</h3><p>Total Farmers</p></div>
+                </div>
+                <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+                    <div class="stat-icon orange"><i class="fas fa-store"></i></div>
+                    <div class="stat-content"><h3>${stats.total_merchants}</h3><p>Total Merchants</p></div>
+                </div>
+                <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+                    <div class="stat-icon blue"><i class="fas fa-users-cog"></i></div>
+                    <div class="stat-content"><h3>${stats.total_farmers + stats.total_merchants}</h3><p>Total Users</p></div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+
+</html>

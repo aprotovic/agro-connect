@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Dashboard | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="../index.html" class="navbar-brand"><i class="fas fa-leaf"></i> Agro-Connect</a>
+            <ul class="navbar-menu">
+                <li><a href="dashboard.html" class="navbar-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="products.html" class="navbar-link"><i class="fas fa-box"></i> My Products</a></li>
+                <li><a href="#" onclick="logout('farmer')" class="navbar-link"><i class="fas fa-sign-out-alt"></i>
+                        Logout</a></li>
+                <li><a href="#" id="theme-toggle" onclick="toggleTheme()" class="navbar-link"><i class="fas fa-moon"
+                            id="theme-icon"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="container">
+            <div class="dashboard-header fade-in">
+                <h1 class="dashboard-title">Welcome, <span id="farmerName">Farmer</span>! 🚜</h1>
+                <p class="dashboard-subtitle">Manage your products and track orders from merchants</p>
+            </div>
+
+            <div id="stats-container" class="dashboard-grid"></div>
+
+            <div class="card fade-in" style="margin-top: 2rem;">
+                <div class="card-header">Recent Orders <i class="fas fa-shopping-cart"></i></div>
+                <div class="table-container" style="margin-top: 1rem;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Merchant</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        const farmer = checkAuth('farmer');
+        if (farmer) {
+            document.getElementById('farmerName').textContent = farmer.name;
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            try {
+                const [productsRes, ordersRes] = await Promise.all([
+                    fetch(`/api/farmer/products?farmer_id=${farmer.farmer_id}`),
+                    fetch(`/api/farmer/orders?farmer_id=${farmer.farmer_id}`)
+                ]);
+
+                const productsData = await productsRes.json();
+                const ordersData = await ordersRes.json();
+
+                if (productsData.success && ordersData.success) {
+                    renderStats(productsData.data, ordersData.data);
+                    renderOrders(ordersData.data);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showAlert('stats-container', 'error', 'Failed to load dashboard data');
+            }
+        }
+
+        function renderStats(products, orders) {
+            const totalProducts = products.length;
+            const totalOrders = orders.length;
+            const totalRevenue = orders.reduce((sum, o) => {
+                // Only count revenue for accepted/completed orders
+                if (['confirmed', 'shipped', 'delivered'].includes(o.status)) {
+                    return sum + o.total_price;
+                }
+                return sum;
+            }, 0);
+
+            document.getElementById('stats-container').innerHTML = `
+                <div class="stat-card fade-in">
+                    <div class="stat-icon green"><i class="fas fa-box"></i></div>
+                    <div class="stat-content"><h3>${totalProducts}</h3><p>Total Products</p></div>
+                </div>
+                <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+                    <div class="stat-icon orange"><i class="fas fa-shopping-cart"></i></div>
+                    <div class="stat-content"><h3>${totalOrders}</h3><p>Total Orders</p></div>
+                </div>
+                <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+                    <div class="stat-icon blue"><i class="fas fa-rupee-sign"></i></div>
+                    <div class="stat-content"><h3>${formatCurrency(totalRevenue)}</h3><p>Total Revenue</p></div>
+                </div>
+            `;
+        }
+
+        function renderOrders(orders) {
+            const tbody = document.getElementById('ordersTable');
+            if (orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">No orders yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = orders.slice(0, 10).map(order => `
+                <tr>
+                    <td>#${order.order_id}</td>
+                    <td>${order.merchant_name}<br><small>${order.merchant_phone}</small></td>
+                    <td>${order.product_name}</td>
+                    <td>${order.quantity} ${order.unit}</td>
+                    <td>${formatCurrency(order.total_price)}</td>
+                    <td>${getStatusBadge(order.status)}</td>
+                    <td>${formatDate(order.order_date)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            ${getActionButtons(order)}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getActionButtons(order) {
+            if (order.status === 'pending') {
+                return `
+                    <button class="btn btn-small btn-success" onclick="updateOrderStatus(${order.order_id}, 'confirmed')">
+                        <i class="fas fa-check"></i> Accept
+                    </button>
+                    <button class="btn btn-small btn-danger" onclick="updateOrderStatus(${order.order_id}, 'cancelled')">
+                        <i class="fas fa-times"></i> Decline
+                    </button>
+                `;
+            } else if (order.status === 'confirmed') {
+                return `
+                    <button class="btn btn-small btn-info" onclick="updateOrderStatus(${order.order_id}, 'shipped')">
+                        <i class="fas fa-truck"></i> Ship
+                    </button>
+                `;
+            } else if (order.status === 'shipped') {
+                return `
+                    <span class="text-muted">In Transit</span>
+                `;
+            } else if (order.status === 'delivered') {
+                return `<span class="text-success"><i class="fas fa-check-double"></i> Completed</span>`;
+            } else {
+                return `-`;
+            }
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            if (!confirm(`Are you sure you want to change order #${orderId} status to ${newStatus}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/order/status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `order_id=${orderId}&status=${newStatus}`
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Reload dashboard to show changes
+                    loadDashboard();
+                    // Show small toast/alert (optional, currently relying on reload)
+                } else {
+                    alert('Failed to update status: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Connection error');
+            }
+        }
+    </script>
+</body>
+
+</html>

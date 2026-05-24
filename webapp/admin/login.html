@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray">
+    <div class="auth-container fade-in">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Admin Portal <i class="fas fa-user-shield"></i></h2>
+                <p>Secure System Management</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" name="username" placeholder="Enter admin username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" name="password" placeholder="Enter password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Login to Dashboard</button>
+            </form>
+
+            <div class="auth-footer">
+                <a href="../index.html"><i class="fas fa-arrow-left"></i> Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('admin_user', JSON.stringify(data.data));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert('Connection error', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="../index.html" class="navbar-brand"><i class="fas fa-leaf"></i> Agro-Connect</a>
+            <ul class="navbar-menu">
+                <li><a href="dashboard.html" class="navbar-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="marketplace.html" class="navbar-link active"><i class="fas fa-store"></i> Marketplace</a>
+                </li>
+                <li><a href="#" onclick="logout('merchant')" class="navbar-link"><i class="fas fa-sign-out-alt"></i>
+                        Logout</a></li>
+                <li><a href="#" id="theme-toggle" onclick="toggleTheme()" class="navbar-link"><i class="fas fa-moon"
+                            id="theme-icon"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="container">
+            <div class="dashboard-header">
+                <h1 class="dashboard-title">Marketplace</h1>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Search products..." onkeyup="filterProducts()">
+                    <select id="categoryFilter" onchange="filterProducts()">
+                        <option value="">All Categories</option>
+                        <option value="Cereals">Cereals</option>
+                        <option value="Vegetables">Vegetables</option>
+                        <option value="Fruits">Fruits</option>
+                        <option value="Spices">Spices</option>
+                        <option value="Coffee">Coffee</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="marketplace-grid" class="products-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Buy Product Modal -->
+    <div id="buyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('buyModal')">&times;</span>
+            <h2>Place Order</h2>
+            <form id="buyForm" onsubmit="handleBuy(event)">
+                <input type="hidden" name="product_id">
+                <input type="hidden" name="merchant_id">
+                <div id="productSummary"
+                    style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label>Quantity to Buy</label>
+                    <input type="number" name="quantity" required min="1" onchange="updateTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Total Cost</label>
+                    <h3 id="totalCost">ETB 0.00</h3>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%">Confirm Order</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        const merchant = checkAuth('merchant');
+        let allProducts = [];
+        let selectedProduct = null;
+
+        if (merchant) {
+            loadMarketplace();
+        }
+
+        async function loadMarketplace() {
+            try {
+                const res = await fetch('/api/products/search'); // Setup to return all available products
+                const data = await res.json();
+
+                if (data.success) {
+                    allProducts = data.data;
+                    renderProducts(allProducts);
+                }
+            } catch (error) {
+                console.error('Error loading marketplace:', error);
+            }
+        }
+
+        function renderProducts(products) {
+            const grid = document.getElementById('marketplace-grid');
+            if (products.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">No products available at the moment.</p>';
+                return;
+            }
+
+            grid.innerHTML = products.map(p => `
+                <div class="card product-card fade-in">
+                    <div class="card-header">
+                        <h3>${p.product_name}</h3>
+                        <span class="badge badge-success">${p.category}</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted"><i class="fas fa-map-marker-alt"></i> ${p.farmer_location}</p>
+                        <p><strong>Farmer:</strong> ${p.farmer_name}</p>
+                        <p><strong>Available:</strong> ${p.quantity} ${p.unit}</p>
+                        <div class="price-tag">${formatCurrency(p.price)} / ${p.unit}</div>
+                        <p class="text-muted small">${p.description || ''}</p>
+                        <button onclick="openBuyModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" 
+                                class="btn btn-primary btn-sm" style="width: 100%; margin-top: 1rem;">
+                            Buy Now
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterProducts() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+
+            const filtered = allProducts.filter(p => {
+                const matchesSearch = p.product_name.toLowerCase().includes(search) ||
+                    p.farmer_name.toLowerCase().includes(search);
+                const matchesCategory = category === '' || p.category === category;
+                return matchesSearch && matchesCategory;
+            });
+
+            renderProducts(filtered);
+        }
+
+        function openBuyModal(product) {
+            selectedProduct = product;
+            const form = document.getElementById('buyForm');
+            form.product_id.value = product.product_id;
+            form.merchant_id.value = merchant.merchant_id;
+            form.quantity.max = product.quantity;
+            form.quantity.value = 1;
+
+            document.getElementById('productSummary').innerHTML = `
+                <strong>${product.product_name}</strong><br>
+                Price: ${formatCurrency(product.price)} / ${product.unit}<br>
+                Available: ${product.quantity} ${product.unit}
+            `;
+
+            updateTotal();
+            document.getElementById('buyModal').style.display = 'block';
+        }
+
+        function updateTotal() {
+            const qty = document.querySelector('input[name="quantity"]').value;
+            const total = qty * selectedProduct.price;
+            document.getElementById('totalCost').textContent = formatCurrency(total);
+        }
+
+        async function handleBuy(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            try {
+                const res = await fetch('/api/orders/place', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    closeModal('buyModal');
+                    loadMarketplace(); // Refresh to show updated quantities
+                    showAlert('Order placed successfully!', 'success');
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error placing order:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

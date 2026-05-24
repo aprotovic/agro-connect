@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Login | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body style="background: var(--gray-50);">
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="../index.html" class="navbar-brand">
+                <i class="fas fa-leaf"></i>
+                Agro-Connect
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="../index.html" class="navbar-link"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="../merchant/login.html" class="navbar-link"><i class="fas fa-store"></i> Merchant Login</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <!-- Login Form -->
+    <div class="container" style="max-width: 500px; padding: 3rem 1.5rem;">
+        <div class="card fade-in">
+            <div class="text-center mb-3">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🏪</div>
+                <h2 style="color: var(--primary-color); margin-bottom: 0.5rem;">Merchant Login</h2>
+                <p style="color: var(--gray-600);">Welcome back! Login to manage your products</p>
+            </div>
+            
+            <div id="alert-container"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-phone"></i> Phone Number
+                    </label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        class="form-input" 
+                        placeholder="Enter your phone number" 
+                        required
+                        pattern="[0-9]{10}"
+                        maxlength="10"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="Enter your password" 
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <p style="color: var(--gray-600);">
+                    Don't have an account? 
+                    <a href="register.html" style="color: var(--primary-color); font-weight: 600;">
+                        Register here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const alertContainer = document.getElementById('alert-container');
+        
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            
+            // Show loading
+            showAlert('info', 'Logging in...');
+            
+            try {
+                const response = await fetch('/api/merchant/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Save farmer data to localStorage
+                    localStorage.setItem('merchant', JSON.stringify(result.data));
+                    
+                    showAlert('success', result.message || 'Login successful! Redirecting...');
+                    
+                    // Redirect to dashboard
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } else {
+                    showAlert('error', result.error || 'Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                showAlert('error', 'Connection error. Please make sure the server is running.');
+                console.error('Login error:', error);
+            }
+        });
+        
+        function showAlert(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 
+                               type === 'error' ? 'alert-error' : 'alert-info';
+            const icon = type === 'success' ? 'check-circle' : 
+                        type === 'error' ? 'exclamation-circle' : 'info-circle';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    <i class="fas fa-${icon}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    if (type === 'error') {
+                        alertContainer.innerHTML = '';
+                    }
+                }, 5000);
+            }
+        }
+    </script>
+    
+</body>
+</html>

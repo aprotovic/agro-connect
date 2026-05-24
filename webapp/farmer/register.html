@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Registration | Agro-Connect</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body style="background: var(--gray-50);">
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="../index.html" class="navbar-brand"><i class="fas fa-leaf"></i> Agro-Connect</a>
+        </div>
+    </nav>
+    
+    <div class="container" style="max-width: 600px; padding: 3rem 1.5rem;">
+        <div class="card fade-in">
+            <div class="text-center mb-3">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🚜</div>
+                <h2 style="color: var(--primary-color);">Farmer Registration</h2>
+                <p style="color: var(--gray-600);">Join Agro-Connect and start selling your products</p>
+            </div>
+            
+            <div id="alert-container"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" id="name" class="form-input" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-map-marker-alt"></i> Location</label>
+                    <input type="text" id="location" class="form-input" placeholder="City, State" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-phone"></i> Phone Number</label>
+                    <input type="tel" id="phone" class="form-input" placeholder="10-digit phone number" required pattern="[0-9]{10}" maxlength="10">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-envelope"></i> Email (Optional)</label>
+                    <input type="email" id="email" class="form-input" placeholder="your@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Create a password" required minlength="6">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-user-plus"></i> Register</button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <p style="color: var(--gray-600);">Already have an account? <a href="login.html" style="color: var(--primary-color); font-weight: 600;">Login here</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="../js/main.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('name').value,
+                location: document.getElementById('location').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+            
+            showAlert('alert-container', 'info', 'Creating your account...');
+            
+            try {
+                const response = await fetch('/api/farmer/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: buildFormData(formData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('alert-container', 'success', 'Registration successful! Redirecting to login...');
+                    setTimeout(() => window.location.href = 'login.html', 2000);
+                } else {
+                    showAlert('alert-container', 'error', result.error || 'Registration failed');
+                }
+            } catch (error) {
+                showAlert('alert-container', 'error', 'Connection error. Please ensure server is running.');
+            }
+        });
+    </script>
+</body>
+</html>
